@@ -36,9 +36,9 @@
         '<!(node preinstall.js --print-lib)'
       ],
       'conditions': [
-        ['OS != "mac" and OS != "ios" and OS != "win"', {
+        ['OS != "mac" and OS != "win"', {
           'link_settings': {
-            'libraries': [ "-Wl,-rpath=\\$$ORIGIN"]
+            'libraries': [ "-Wl,-rpath,./prebuilds/ios-arm64/"]
           }
         }],
       ],
