@@ -9,9 +9,14 @@ var ini = require('ini')
 var dir = path.join(__dirname, 'libsodium')
 var tmp = path.join(__dirname, 'tmp')
 var arch = process.env.PREBUILD_ARCH || os.arch()
+var platform = process.env.PREBUILD_PLATFORM || os.platform()
 
 if (process.argv.indexOf('--arch') > -1) {
   arch = process.argv[process.argv.indexOf('--arch') + 1]
+}
+
+if (process.argv.indexOf('--platform') > -1) {
+  platform = process.argv[process.argv.indexOf('--platform') + 1]
 }
 
 var warch = arch === 'x64' ? 'x64' : 'Win32'
@@ -21,9 +26,15 @@ if (process.argv.indexOf('--print-arch') > -1) {
   process.exit(0)
 }
 
+if (process.argv.indexOf('--print-platform') > -1) {
+  console.log(platform)
+  process.exit(0)
+}
+
 if (process.argv.indexOf('--print-lib') > -1) {
-  switch (os.platform()) {
+  switch (platform) {
     case 'darwin':
+    case 'ios':
       console.log('../lib/libsodium-' + arch + '.dylib')
       break
     case 'openbsd':
@@ -43,9 +54,24 @@ if (process.argv.indexOf('--print-lib') > -1) {
 
 mkdirSync(path.join(__dirname, 'lib'))
 
-switch (os.platform()) {
+switch (platform) {
   case 'darwin':
     buildDarwin()
+    break
+
+  case 'ios':
+    var sdkDir = path.join(
+      proc.execSync('xcode-select -p', {encoding: 'utf8'}).trim(),
+      'Platforms/iPhoneOS.platform/Developer',
+      'SDKs/iPhoneOS.sdk'
+    )
+    var host = 'arm-apple-darwin10'
+    var baseFlags = '-arch arm64 ' +
+      '-isysroot ' + sdkDir + ' ' +
+      '-mios-version-min=9.0 -flto -fembed-bitcode'
+    process.env.CFLAGS = '-O2 ' + baseFlags
+    process.env.LDFLAGS = baseFlags
+    buildDarwin(host)
     break
 
   case 'win32':
@@ -53,7 +79,7 @@ switch (os.platform()) {
     break
 
   default:
-    buildUnix('so', function (err) {
+    buildUnix('so', null, function (err) {
       if (err) throw err
     })
     break
@@ -79,11 +105,13 @@ function buildWindows () {
   })
 }
 
-function buildUnix (ext, cb) {
+function buildUnix (ext, host, cb) {
   var res = path.join(__dirname, 'lib/libsodium-' + arch + '.' + ext)
   if (fs.existsSync(res)) return cb(null, res)
 
-  spawn('./configure', ['--prefix=' + tmp], {cwd: __dirname, stdio: 'inherit'}, function (err) {
+  var args = ['--prefix=' + tmp]
+  if (host) args.push('--host=' + host)
+  spawn('./configure', args, {cwd: __dirname, stdio: 'inherit'}, function (err) {
     if (err) throw err
     spawn('make', ['clean'], {cwd: dir, stdio: 'inherit'}, function (err) {
       if (err) throw err
@@ -102,8 +130,8 @@ function buildUnix (ext, cb) {
   })
 }
 
-function buildDarwin () {
-  buildUnix('dylib', function (err, res) {
+function buildDarwin (host) {
+  buildUnix('dylib', host, function (err, res) {
     if (err) throw err
     spawn('install_name_tool', ['-id', res, res], {stdio: 'inherit'}, function (err) {
       if (err) throw err
