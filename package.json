@@ -1,6 +1,6 @@
 {
-  "name": "@jimpick/sodium-native",
-  "version": "2.1.6-2",
+  "name": "sodium-native",
+  "version": "2.1.6-3",
   "description": "Low level bindings for libsodium",
   "main": "index.js",
   "dependencies": {
