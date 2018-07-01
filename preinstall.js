@@ -60,13 +60,17 @@ switch (platform) {
     break
 
   case 'ios':
+    var iosArch = arch === 'x64' ? 'x86_64' : arch
+    var iosPlatform = arch === 'arm64' ? 'iPhoneOS' : 'iPhoneSimulator'
     var sdkDir = path.join(
       proc.execSync('xcode-select -p', {encoding: 'utf8'}).trim(),
-      'Platforms/iPhoneOS.platform/Developer',
-      'SDKs/iPhoneOS.sdk'
+      `Platforms/${iosPlatform}.platform/Developer`,
+      `SDKs/${iosPlatform}.sdk`
     )
-    var host = 'arm-apple-darwin10'
-    var baseFlags = '-arch arm64 ' +
+    var hostArch = iosArch
+    if (iosArch === 'arm64') hostArch = 'arm'
+    var host = hostArch + '-apple-darwin10'
+    var baseFlags = '-arch ' + iosArch + ' ' +
       '-isysroot ' + sdkDir + ' ' +
       '-mios-version-min=9.0 -flto -fembed-bitcode'
     process.env.CFLAGS = '-O2 ' + baseFlags
